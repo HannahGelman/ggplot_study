@@ -1,0 +1,113 @@
+---
+title: "GGPlot Chapter 2"
+output: html_notebook
+author: "Hannah Gelman"
+date: "2020-04-08"
+---
+
+Notebook for working through Chapter 2 of the GGPlot book 
+
+```{r}
+library(ggplot2) 
+library(tidyverse)
+```
+
+
+```{r}
+head(mpg)
+```
+```{r}
+names(mpg)
+```
+
+#### Exercises, Section 2.2 
+
+3. Convert distance traveled with a fixed amount of fuel (mpg) to fuel consumed over a fixed distance (gpm --> lp100km) to distance traveled with a 
+```{r}
+mpg_to_lp100km <- function(mpg){ 
+  #conversion gallons to liters 
+  lit_p_gal <- 3.78 
+  #conversion miles to 1 km 
+  mil_p_km <- .62
+  
+  lp100km <- 1/mpg * lit_p_gal * mil_p_km *100 
+  return(lp100km) 
+}
+
+mpg_data <- mpg %>% mutate(hwy_lp100km = mpg_to_lp100km(hwy), 
+                           cty_lp100km = mpg_to_lp100km(cty))
+
+```
+
+4. Which manufacturer has the most models in this dataset? Which model has the most variations? Does your answer change if you remove the redundant specification of drivetrain? 
+
+Which manufacturer has the most models in this dataset? Toyota 
+```{r}
+mpg %>% group_by(manufacturer) %>% summarize(nmodels = n_distinct(model)) %>% arrange(-nmodels)
+```
+
+Which model has the most variations? jetta
+```{r}
+mpg %>% group_by(model) %>% summarize(nvar = n(), 
+                                      nvar_not_year = n_distinct(displ, cyl, trans, drv)) %>% 
+  arrange(-nvar_not_year)
+```
+What if you remove redundant drivetrain? 
+
+```{r}
+#this function doesn't work as expected - returns same (last) value for all. why? 
+remove_drv <- function(modelname){
+  #remove drivetrain specification if included in model name 
+  model_arr = strsplit(modelname, " ") 
+  
+  n = length(model_arr)
+  #if the length is 1, return modelname as before 
+  if(n == 1) {
+    return(modelname)
+  } else if(model_arr[n] %in% c('4wd', '2wd', 'quattro', 'awd')) {
+    return(paste(model_arr[1:n-1]))
+  } else { 
+    return(modelname) }
+  
+}
+
+mpg_data <- mpg %>% mutate(clean_model = str_trim(str_replace_all(model, c("2wd" = "", "4wd" = "", "awd" = "", "quattro" = ""))))
+```
+
+Which manufacturer as the most models in this case? Still Toyota, but fewer models 
+```{r}
+mpg_data %>% group_by(manufacturer) %>% summarize(nmodels = n_distinct(clean_model)) %>% arrange(-nmodels)
+```
+Which model has the most variations? a4 
+```{r}
+mpg_data %>% group_by(clean_model) %>% 
+  summarize(nvar = n(), 
+            nvar_not_year = n_distinct(displ, cyl, trans, drv)) %>% 
+  arrange(-nvar_not_year)
+
+#mpg_data %>% filter(clean_model == 'a4') %>% arrange(drv, trans, cyl)
+#by inspection, same config does not appear repeated by year. 
+```
+
+#### Exercises, Section 2.3 
+1. How would you describe the relationship between cty and hwy? Any concerns about drawing conclusions from this plot? 
+Seems like a pretty direct relationship, hwy generally higher than cty. Seems like less data at higher fuel economy so hard to now how relationship holds. Odd to see "striping", wonder how values were estimated. 
+
+```{r}
+ggplot(mpg, aes(hwy, cty)) + 
+  geom_point()
+```
+
+2. What does ggplot(mpg, aes(model, manufacturer)) + geom_point() show? Is it useful? How could you modify the data to make it more informative?
+I have no idea what this is supposed to show... 
+```{r}
+ggplot(mpg, aes(model, manufacturer)) + 
+  geom_point()
+```
+Describe the data, aesthetic mappings and layers used for each of the following plots. You’ll need to guess a little because you haven’t seen all the datasets and functions yet, but use your common sense! See if you can predict what the plot will look like before running the code.
+-- I made these. 
+```{r}
+ggplot(mpg, aes(cty)) + geom_histogram()
+```
+
+#### Exercises, Section 2.4 
