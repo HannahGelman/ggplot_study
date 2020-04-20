@@ -1,0 +1,170 @@
+---
+title: "GGPlot Toolbox Exercises"
+author: "Hannah Gelman"
+date: '2020-04-20'
+output:
+  html_document:
+    df_print: paged
+---
+
+Notebook for working through the toolbox section of the GGPlot book (Chapters 4-9)
+
+
+```{r}
+library(ggplot2) 
+library(tidyverse)
+
+mpg_data <- mpg
+```
+
+#### Chapter 4: Individual Geoms 
+
+Exercise 4.1.1
+
+
+1. What geoms would you use to draw each of the following named plots?
+- Scatterplot - geom_point() 
+- Line chart - geom_line()
+- Histogram - geom_histogram() - at low level this is a specially calculated geom_bar() 
+- Bar chart - geom_bar()
+- Pie chart - geom_polygon() 
+
+2. What’s the difference between geom_path() and geom_polygon()? What’s the difference between geom_path() and geom_line()?
+geom_path() draws a line between points defined by x,y in the order in which they are presented. geom_polygon() fills in the shape defined by these points (uses points as vertices). 
+geom_path() draws a line between points defined by x,y in the order in which they are presented. geom_line() connects ponts from left to right. 
+
+3. What low-level geoms are used to draw geom_smooth()? What about geom_boxplot() and geom_violin()?
+- geom_smooth():  geom_line(), geom_area() 
+- geom_boxplot(): geom_point(), geom_tile(), geom_line() 
+- geom_violin(): geom_area(), (opt. geom_point(), geom_line())
+
+
+#### Chapter 5: Collective Geoms
+
+Using Oxboys data: 
+```{r}
+data(Oxboys, package = "nlme")
+head(Oxboys)
+```
+
+5.5.1. Draw a boxplot of hwy for each value of cyl, without turning cyl into a factor. What extra aesthetic do you need to set?
+```{r}
+ggplot(mpg_data, aes(y = hwy)) + 
+  geom_boxplot()
+```
+
+Method 1: set group aesthetic (with optional fill )
+
+```{r}
+ggplot(mpg_data, aes(y = hwy, group = cyl, fill = cyl)) + 
+  geom_boxplot()
+```
+
+Method 2: Also set x = cyl to have informative x axis. 
+
+```{r}
+ggplot(mpg_data, aes(x = cyl, y = hwy, group = cyl, fill = cyl)) + 
+  geom_boxplot()
+```
+
+5.5.2. Modify the following plot so that you get one boxplot per integer value of displ.
+```{r}
+ggplot(mpg, aes(x = displ, y = cty)) + 
+  geom_boxplot()
+```
+
+```{r}
+ggplot(mpg, aes(x = as.integer(displ), y = cty, group = as.integer(displ))) + 
+  geom_boxplot()
+```
+
+Make sure as integer does what it should  - yes, it strips the decimal (doesn't round). 
+```{r}
+ggplot(mpg_data, aes(x = displ, y = as.integer(displ))) + 
+  geom_point()
+```
+
+5.5.3. When illustrating the difference between mapping continuous and discrete colours to a line, the discrete example needed aes(group = 1). Why? What happens if that is omitted? What’s the difference between aes(group = 1) and aes(group = 2)? Why?
+
+- in the discrete color example, if the aes(group = 1) is omitted, only the points are plotted and a warning comes up that each path only contains one point.
+
+Example (discrete color) 
+```{r}
+df <- data.frame(x = 1:3, y = 1:3, colour = c(1,3,5))
+
+ggplot(df, aes(x, y, colour = factor(colour))) + 
+  geom_line( size = 2) +
+  geom_point(size = 5)
+```
+
+The graph with group = 2 (or any other number) is identical to the graph where group = 1. 
+
+
+```{r}
+ggplot(df, aes(x, y, colour = factor(colour))) + 
+  geom_line(aes(group = 2), size = 2) +
+  geom_point(size = 5)
+```
+
+I think this happens because when an aesthetic is mapped to a discrete variable, ggplot treats it as part of the group aesthetic. Therefore, in the discrete case, each point has a different color AND belongs to a different group, so no line segments can be drawn. Setting the group aesthetic to a constant in geom_line() (any constant) overrides this grouping and lets the line be drawn betwene all three points (with the aesthetics controlled by the first point in the segment, as described). 
+
+Though the example in the text sets the grouping aesthetic for the continuous case, it is not needed. In this case, I believe because the continuous variable controlling the aesthetics is not treated as a grouping variable so no grouping assignment needs to be overriden. 
+
+```{r}
+ggplot(df, aes(x, y, colour = (colour))) + 
+  geom_line( size = 2) +
+  geom_point(size = 5)
+
+```
+
+5.5.4. How many bars are in each of the following plots?
+
+Answer prior to plotting: number of bars = number of values of drv (3)
+```{r}
+ggplot(mpg, aes(drv)) + 
+  geom_bar()
+```
+
+Answer prior to plotting: same as above on plot, but *many* bars plotted within each bar (for each unique value of hwy) (was not sure what would happen with color gradations, they are appearing here because fill and group are set to hwy.  )
+
+Answer after plotting: 
+
+```{r}
+num_rect <- mpg_data %>% group_by(drv) %>% summarize(n_hwy = n_distinct(hwy))
+
+num_rect
+num_rect %>% pivot_wider(names_from = drv, values_from = n_hwy, names_prefix = "drv_") %>% mutate(total = drv_4 + drv_f + drv_r)
+```
+
+```{r}
+ggplot(mpg, aes(drv, fill = hwy, group = hwy)) + 
+  geom_bar(color = "white")
+```
+
+Answer prior to plotting: i think it will be the same as above, but id will be ranked values of hwy (not hwy) in colorbar 
+
+Answer after plotting is not same as above. each row now gets its own value, so each observation gets its own rectangle. 
+--> 234 rectangles 
+```{r}
+summary(mpg_data) 
+```
+
+
+```{r}
+mpg2 <- mpg_data %>% arrange(hwy) %>% mutate(id = seq_along(hwy)) 
+ggplot(mpg2, aes(drv, fill = hwy, group = id)) + 
+  geom_bar(color = "white")
+```
+
+5.5.5. Install the babynames package. It contains data about the popularity of babynames in the US. Run the following code and fix the resulting graph. Why does this graph make me unhappy?
+
+--> original graph had no grouping, sawtooth indicated that plotting values from different groups using the same line. Can group by "sex" or imply grouping by using color aesthetic, then counts for male and female babies are graphed separately. 
+
+I guess Hadley feels bad that Hadley is not a common name for male babies? 
+```{r}
+library(babynames)
+hadley <- filter(babynames, name == "Hadley")
+ggplot(hadley, aes(year, n, color = sex)) + 
+  geom_line()
+```
+
