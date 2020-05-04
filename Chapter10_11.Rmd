@@ -1,0 +1,218 @@
+---
+title: "GGPlot2 Chapter 10-11"
+author: "Hannah Gelman"
+date: '2020-05-04'
+output:
+  html_document:
+    df_print: paged
+---
+
+### Notebook with Notes from Chapter 10 and Exercises from Chapter 11. 
+
+```{r}
+library(ggplot2) 
+library(tidyverse)
+```
+
+#### Chapter 10 
+
+##### 10.2 Building a scatterplot 
+
+```{r}
+glimpse(mpg)
+```
+
+Start with a scatterplot of engine displacement and highway mpg with points coloured by number of cylinders:
+
+```{r}
+ggplot(mpg, aes(x=displ, y=hwy, color = factor(cyl))) + 
+  geom_point()
+```
+
+Attributes of a data point or data element (position, color, size, shape) are aesthetics and they can be set according to a variable or a constant (or default). 
+
+Applying an aesthetic basically creates a new dataset with x,y positions mapped to appearance values. 
+
+Component objects (points, lines, bars) are examples of geometric objects (geoms). Plots that use a single geom often have a special name (this seems like a weird thing to say... the graphs have names and presumably the geoms were created to make it possible to make those plots considered essential...) 
+
+Can add a regression line (recall that using factor with cyl will get you a regression line for each group): 
+
+```{r}
+ggplot(mpg, aes(displ, hwy, colour = factor(cyl))) + 
+  geom_point() + 
+  geom_smooth(method = "lm")
+```
+
+But no factor gives one regression line across all cyl 
+```{r}
+ggplot(mpg, aes(displ, hwy, colour = (cyl))) + 
+  geom_point() + 
+  geom_smooth(method = "lm")
+```
+
+Scaling - scaling is how GGPlot maps aesthetic values into graphical objects (e.g. positions converted on a [0,1] scale of axis length, colors spaced around color wheel) 
+
+Elements of a plot: 
+- data (represented by geom) 
+- scales and coordinate system (conversion between graphics and data) 
+- plot annotations (background, labels, plot titles) 
+
+##### Adding Complexity 
+
+
+Lets look at displ over time. 
+```{r}
+ggplot(mpg, aes(displ, hwy)) + 
+  geom_point() + 
+  geom_smooth() + 
+  facet_wrap(~year)
+```
+
+What's new here? 
+1. facets - Adding a facet is like making a 3-dimensional dataframe, where each graph is its own dataset in its own coordinate frame. 
+2. multiple layers 
+3. statistics - these layers don't display the data directly but display a statistical transform of the data. data is passed to *stat* and the outcome is returned to be plotted. 
+
+--> Question: How is each layer encoded? as its own dataset? Linked to the previous dataset? 
+
+Also makes more work for the scales --> have to ensure that scales are the same across both plots (unless this is over-ridden?). Scaling has 3 steps: 
+1. Transformation (e.g. to log) 
+(1a. Statistics are calculated on transformed data...) 
+2. Training - combines information about each dataset (layers and facets) to create a scale that will include and overlap all data appropriately. 
+3. Map - map data in local datasets to aesthetic values 
+
+##### 10.4 Components of the layered grammar 
+
+The grammar conceives of a plot as the combination of: 
+1. The dataset and mappings from variables to aesthetics 
+2. One or more layers (composed of geom, stat, position adjustment, and optionally, an additional dataset and aesthetic mappings) 
+3. One scale for each aesthetic mapping used (a scale and guide)
+4. Coordinate system 
+5. Facetting specification 
+
+##### 10.5 Exercises 
+For each graph below, record key elements so you could communicate it to someone else (bonus for ggplot functions) 
+
+1. “Napoleon’s march” by Charles John Minard:
+
+
+2. Where the Heat and the Thunder hit their shots (http://nyti.ms/1duzTvY)
+- data: season-long shot data (1 row/shot - position, result (pts?)). number of shots mapped to size.  points/region mapped to color 
+- layers: geom_point with hex shape. stat - binned data 
+- scale: color goes from blue--> red (low--> high), size (hexes from few to many attempts) 
+- coordinate system: binned cartesian (i assume...) of physical court location
+- facet: 1 for each team (facet_wrap(~team)), per player, per shot type (not 100% clear to me how scales are kept constant/varied across facets. looks like shared by shot type/maybe not shared across the others?)
+- annotations: summary statistics of total shots, pts./shot, f.g. %
+
+3. Dissecting a trailer (https://archive.nytimes.com/www.nytimes.com/interactive/2013/02/19/movies/awardsseason/oscar-trailers.html) 
+- data: dataset with scent time in trailer mapped to scene time in movie. May also have shot length or a fixed resolution. color mapped to categorical time in movie (beginning, middle, end, not in movie) 
+- layers: geom_point with line shape). geom_line() connecting. Spacing of points/resolution/interpolation not clear to me
+- scale: caretsian - x - time in trailer, y - time in move 
+- facet: 1/movie (if you really want to call that a facet)
+- annotations: some notes about notable scents 
+
+#### Chapter 11 
+
+Build a plot layer by layer
+
+##### 11.2 Building a plot 
+
+The call to ggplot creates a first default dataset and aesthetic mappings. Adding a layer defines: 
+- mapping (can pull from ggplot call in aes()) 
+- data (can pull from ggplot call)
+- geom (defaults according to geom) 
+- stat 
+- position
+
+you can plot multiple datasets on the same graph by overriding the default data 
+
+###### 11.3 Exercises 
+1. The first two arguments to ggplot are data and mapping. The first two arguments to all layer functions are mapping and data. Why does the order of the arguments differ? (Hint: think about what you set most commonly.)
+
+Usually layer calls will take the dataset provided by ggplot, so first argument supplied will be setting aes. this allows unlabeled setting of these most common arguments. 
+
+2. Recreate the plot using a summary dataframe of the cars dataset 
+```{r}
+class <- mpg %>% 
+  group_by(class) %>% 
+  summarize(n = n(), hwy = mean(hwy))
+```
+
+```{r}
+ggplot(mpg, aes(class, hwy)) + 
+  geom_jitter(size = 3, width = .25, height = .25 ) + 
+  geom_point(data = class, aes(class, hwy), color = "red", size = 6) + 
+  geom_text(data = class, aes(y = 9, label = paste("n = ", n, sep = "") ))
+```
+
+##### Aesthetics 
+1. Simplify the following plot specifications 
+```{r}
+#Starting: 
+#ggplot(mpg) + 
+#  geom_point(aes(mpg$displ, mpg$hwy))
+
+ggplot(mpg, aes(displ, hwy)) + 
+  geom_point()
+```
+
+
+```{r}
+#Original: 
+#ggplot() + 
+# geom_point(mapping = aes(y = hwy, x = cty), data = mpg) +
+# geom_smooth(data = mpg, mapping = aes(cty, hwy))
+
+ggplot(mpg, aes(cty, hwy) ) + 
+ geom_point() +
+ geom_smooth()
+```
+
+```{r}
+# Original: 
+#ggplot(diamonds, aes(carat, price)) + 
+#  geom_point(aes(log(brainwt), log(bodywt)), data = msleep)
+
+ggplot(msleep, aes(log(brainwt), log(bodywt))) + 
+  geom_point()
+```
+
+What does the following code do? Does it work? Does it make sense? Why/why not?
+
+Before plotting: 
+1. it is going to make a scatter plot of class vs. cty (as we made above) and on top of that plot a boxplot of trans,hwy. I do not think it makes any sense - we haven't grouped by any variable, so the boxplot won't have any relationship to the x axis values. 
+
+--> it just plotted them all next to each other on the x-axis (I guess alphabetical.)
+it does not make any sense to me. 
+
+```{r}
+ggplot(mpg) +
+  geom_point(aes(class, cty)) + 
+  geom_boxplot(aes(trans, hwy, color = trans))
+```
+This is the closest I could get for this to make sense. 
+```{r}
+ggplot(mpg, aes(class, cty)) +
+  geom_jitter(width = .25) + 
+  geom_boxplot(aes(color = trans))
+```
+
+What happens if you try to use a continuous variable on the x axis in one layer, and a categorical variable in another layer? What happens if you do it in the opposite order?
+
+- We saw above what happens if you use two categorical in one layer - they get interleaved alphabetically (I'm sure there's a way to make something else happen.) 
+
+Categorical first: the two graphs get appended next to each other. 
+```{r}
+ggplot(mpg) +
+  geom_jitter(aes(drv, cty), width = .25) + 
+  geom_jitter(aes(hwy, cty), width = .25)
+```
+
+Categorical second: gives an error. 
+```{r}
+
+#ggplot(mpg) +
+#  geom_jitter(aes(hwy, cty), width = .25) + 
+#  geom_jitter(aes(drv, cty), width = .25)
+```
+
