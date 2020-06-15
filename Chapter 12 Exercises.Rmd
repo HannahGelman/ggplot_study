@@ -1,0 +1,96 @@
+---
+title: "GGPlot2 Chapter 12"
+author: "Hannah Gelman"
+date: '2020-05-04'
+output:
+  html_document:
+    df_print: paged
+---
+
+### Notebook with Notes and Exercises from Chapter 12.  
+
+```{r}
+library(ggplot2) 
+library(tidyverse)
+```
+```{r}
+head(mpg)
+```
+
+##### 12.1 Specifying scales 
+
+Every aesthetic in your plot is mapped to a single scale. 
+
+Only one scale is allowed/aesthetic, so subsequent scale setting on the same aesthetic effectively overrides the previous setting. 
+
+1. What happens if you pair a discrete variable to a continuous scale or vice-versa? 
+--> error. discrete value supplied to continuous scale or 
+--> Error: Continuous value supplied to discrete scale --> this seems to be a little inconsistent. in all cases it is difficult for labels to be associated with the scale. sometimes points seem to be plotted but in others an error is thrown
+
+```{r}
+ggplot(mpg, aes(year, displ)) + geom_point() + scale_x_discrete()
+```
+
+```{r}
+ggplot(mpg, aes((hwy), displ)) + 
+  geom_point() + 
+  scale_x_discrete(limits = as.character(c(12:44)))
+
+```
+
+2. Simplify the following plot specifications 
+```{r}
+ggplot(mpg, aes(displ, hwy)) + 
+  geom_point() +
+  scale_y_continuous("Highway mpg") 
+```
+```{r}
+ggplot(mpg, aes(class, displ, color = drv)) + 
+  geom_point() + 
+  scale_y_continuous("Displacement (l)") + 
+  scale_x_discrete("Type of car") + 
+  scale_colour_discrete("Drive\ntrain")
+```
+
+##### 12.2 Adjusting scale limits 
+
+ggplot scales are usually derived from data min and max. you can specify specific limits to: 
+1. shrink to focus on an interesting area of the plot 
+2. expand to make multiple plots match up. 
+
+To change these, you use the limits argument in the scale_ functions. for a continuous function the limits are a numeric vector  = c(min, max), for discrete scales, limits is a character vector enumerating all possible values. 
+
+xlim, ylim exist as convenience functions for this. lims is a general function 
+
+to eliminate expansion of limits, use expand  = c(0,0) 
+
+Exercises 
+
+```{r}
+fwd <- subset(mpg, drv == "f")
+rwd <- subset(mpg, drv == "r")
+
+# set up limits 
+hwy <- c(unique(rwd$hwy), unique(fwd$hwy)) 
+class <- unique(c(rwd$class, fwd$class))
+displ <- unique(c(rwd$displ, fwd$displ))
+
+
+```
+
+```{r}
+ggplot(fwd, aes(displ, hwy, colour = class)) + 
+  geom_point() +
+  scale_color_discrete(limits = class) +
+  lims(x = c(min(displ), max(displ)), 
+       y = c(min(hwy), max(hwy)))
+```
+
+```{r}
+ggplot(rwd, aes(displ, hwy, colour = class)) + 
+  geom_point() +
+  lims(x = c(min(displ), max(displ)), 
+       y = c(min(hwy), max(hwy)), 
+       color = class)
+```
+
